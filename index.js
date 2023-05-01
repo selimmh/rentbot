@@ -1,40 +1,61 @@
-const axios = require("axios");
-const { JSDOM } = require("jsdom");
-const fs = require("fs");
-const TelegramBot = require("node-telegram-bot-api");
-const CronJob = require("cron").CronJob;
-const dotenv = require("dotenv");
+import axios from "axios";
+import fs from "fs";
+import dotenv from "dotenv";
+
+import TelegramBot from "node-telegram-bot-api";
+import { JSDOM } from "jsdom";
+import { CronJob } from "cron";
+
 dotenv.config();
 
-const botToken = process.env.BOT_TOKEN;
-const CHAT_ID = process.env.CHAT_ID;
-const bot = new TelegramBot(botToken, { polling: true });
 const BASE_URL = `https://www.olx.ro/imobiliare/apartamente-garsoniere-de-inchiriat/3-camere/suceava/?currency=EUR&search%5Border%5D=created_at%3Adesc&view=list&page=`;
+const botToken = process.env.BOT_TOKEN;
+const bot = new TelegramBot(botToken, { polling: true });
 const LISTINGS_FILE = "listings.json";
+const chatIds = [];
 
-// 5987518865 selim chat id
-
-bot.on("message", (msg) => {
+bot.onText(/\/init/, (msg) => {
   const chatId = msg.chat.id;
-  console.log(chatId);
-  bot.sendMessage(chatId, "Received your message");
-});
 
-const sendTelegramMessageArray = async (listings) => {
-  if (listings.length === 0) {
-    console.log("🥹 No new listings found");
-    await bot.sendMessage(CHAT_ID, "🥹 No new listings found");
-    return;
+  if (!chatIds.includes(chatId)) {
+    chatIds.push(chatId);
   }
 
-  console.log("😍 New listing(s) found: " + listings.length);
-  await bot.sendMessage(CHAT_ID, "😍 New listing(s) found: " + listings.length);
+  bot.sendMessage(chatId, "🤖 Bot initialized");
+});
 
-  listings.forEach((listing) => {
-    const parsedMessage = `Title: ${listing?.title}\nPrice: ${listing?.price}\n${listing?.link}`;
+bot.onText(/\/stop/, (msg) => {
+  const chatId = msg.chat.id;
+  const index = chatIds.indexOf(chatId);
+  if (index > -1) {
+    chatIds.splice(index, 1);
+  }
+  bot.sendMessage(chatId, "Bor daway");
+});
 
-    console.log(parsedMessage);
-    bot.sendMessage(CHAT_ID, parsedMessage);
+bot.onText(/\/list/, (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId, JSON.stringify(chatIds));
+});
+
+const job = new CronJob(
+  // "0 */1 * * *", // every hour
+  "*/5 * * * * *", // every 5 seconds
+
+  function () {
+    main();
+  },
+  null,
+  true,
+  "Europe/Bucharest"
+);
+
+const logger = async (msg) => {
+  if (!chatIds.length) return;
+
+  console.log(msg);
+  chatIds?.forEach((chatid) => {
+    bot.sendMessage(chatid, msg);
   });
 };
 
@@ -51,6 +72,7 @@ const fetchListingsPage = async () => {
 const extractListings = (html) => {
   const dom = new JSDOM(html);
   const listings = dom.window.document.querySelectorAll('[data-cy="l-card"]');
+
   const listingsArray = Array.from(listings).map((listing) => {
     const title = listing.querySelector("h6").textContent;
     const linkRaw = listing.querySelector("a").href;
@@ -93,30 +115,29 @@ let isInitialRun = true;
 const main = async () => {
   job.start();
   try {
-    // clear listings file on initial run
     const newListing = await getNewListings();
 
     if (isInitialRun) {
-      bot.sendMessage(CHAT_ID, "🤖 Bot initialized");
-      console.log("🤖 Bot initialized");
-
+      logger("🤖 Bot initialized");
       isInitialRun = false;
-    } else {
-      sendTelegramMessageArray(newListing);
+      return;
+    }
+
+    if (newListing.length === 0) {
+      await logger("😢 No new listings found");
+      return;
+    }
+
+    if (newListing.length) {
+      await logger("😍 New listing(s) found: " + newListing.length);
+
+      newListing.forEach((listing) => {
+        const parsedMessage = `Title: ${listing?.title}\nPrice: ${listing?.price}\n${listing?.link}`;
+        logger(parsedMessage);
+      });
+      return;
     }
   } catch (error) {
-    bot.sendMessage(CHAT_ID, "Error fetching or processing listings");
-    console.error("Error fetching or processing listings:", error);
+    logger("Error fetching or processing listings");
   }
 };
-
-// every 20 seconds
-const job = new CronJob(
-  "*/05 * * * * *",
-  function () {
-    main();
-  },
-  null,
-  true,
-  "Europe/Bucharest"
-);
