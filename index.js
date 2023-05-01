@@ -39,8 +39,8 @@ bot.onText(/\/list/, (msg) => {
 });
 
 const job = new CronJob(
-  // "0 */1 * * *", // every hour
-  "*/5 * * * * *", // every 5 seconds
+  "0 */1 * * *", // every hour
+  // "*/5 * * * * *", // every 5 seconds
 
   function () {
     main();
