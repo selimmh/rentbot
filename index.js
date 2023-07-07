@@ -8,9 +8,10 @@ import { CronJob } from "cron";
 
 dotenv.config();
 
-const with1room = "https://www.olx.ro/imobiliare/apartamente-garsoniere-de-inchiriat/1-camera/suceava/?currency=EUR&view=list"
-// const with2room = "https://www.olx.ro/imobiliare/apartamente-garsoniere-de-inchiriat/2-camere/suceava/?currency=EUR&view=list"
-// const with3room = "https://www.olx.ro/imobiliare/apartamente-garsoniere-de-inchiriat/3-camere/suceava/?currency=EUR&view=list"
+const with1room = "https://www.olx.ro/imobiliare/apartamente-garsoniere-de-inchiriat/1-camera/suceava/"
+// const with2room = "https://www.olx.ro/imobiliare/apartamente-garsoniere-de-inchiriat/2-camere/suceava/"
+// const with3room = "https://www.olx.ro/imobiliare/apartamente-garsoniere-de-inchiriat/3-camere/suceava/"
+
 
 const BASE_URL = `${with1room}?currency=EUR&search%5Border%5D=created_at%3Adesc&view=list&page=`;
 const botToken = process.env.BOT_TOKEN;
